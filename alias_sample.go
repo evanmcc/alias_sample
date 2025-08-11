@@ -24,8 +24,6 @@ package alias_sample
 
 import (
 	r "math/rand"
-
-	"github.com/gammazero/deque"
 )
 
 type AliasSampler struct {
@@ -79,8 +77,8 @@ func InitWithSeed(probs []float64, seed int64) (*AliasSampler, error) {
 	/* Compute the average probability and cache it for later use. */
 	average := 1.0 / float64(len(probs))
 
-	var small deque.Deque[int]
-	var large deque.Deque[int]
+	var small []int
+	var large []int
 
 	/* Populate the stacks with the input probabilities. */
 	for i := range len(probs) {
@@ -88,9 +86,9 @@ func InitWithSeed(probs []float64, seed int64) (*AliasSampler, error) {
 		 * it to the small list; otherwise we add it to the large list.
 		 */
 		if probs2[i] >= average {
-			large.PushBack(i)
+			large = append(large, i)
 		} else {
-			small.PushBack(i)
+			small = append(small, i)
 		}
 	}
 
@@ -100,10 +98,12 @@ func InitWithSeed(probs []float64, seed int64) (*AliasSampler, error) {
 	 * Consequently, this inner loop (which tries to pair small and large
 	 * elements) will have to check that both lists aren't empty.
 	 */
-	for !(small.Len() == 0) && !(large.Len() == 0) {
+	for !(len(small) == 0) && !(len(large) == 0) {
 		/* Get the index of the small and the large probabilities. */
-		less := small.PopBack()
-		more := large.PopBack()
+		less := small[len(small)-1]
+		small = small[0 : len(small)-1]
+		more := large[len(large)-1]
+		large = large[0 : len(large)-1]
 
 		/* These probabilities have not yet been scaled up to be such that
 		 * 1/n is given weight 1.0.  We do this here instead.
@@ -120,9 +120,9 @@ func InitWithSeed(probs []float64, seed int64) (*AliasSampler, error) {
 		 * small list; otherwise add it to the large list.
 		 */
 		if probs2[more] >= 1.0/float64(len(probs2)) {
-			large.PushBack(more)
+			large = append(large, more)
 		} else {
-			small.PushBack(more)
+			small = append(small, more)
 		}
 	}
 
@@ -131,12 +131,13 @@ func InitWithSeed(probs []float64, seed int64) (*AliasSampler, error) {
 	 * appropriately.  Due to numerical issues, we can't be sure which
 	 * stack will hold the entries, so we empty both.
 	 */
-	for small.Len() != 0 {
-		probability[small.PopBack()] = 1.0
+	for _, s := range small {
+
+		probability[s] = 1.0
 	}
 
-	for large.Len() != 0 {
-		probability[large.PopBack()] = 1.0
+	for _, l := range large {
+		probability[l] = 1.0
 	}
 
 	return &AliasSampler{
