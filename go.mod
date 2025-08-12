@@ -1,4 +1,4 @@
-module github.com/evanmcc/alias-sample
+module github.com/evanmcc/alias_sample
 
 go 1.24.4
 
